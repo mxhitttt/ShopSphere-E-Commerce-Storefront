@@ -1,5 +1,6 @@
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   ArrowRight,
   Heart,
@@ -9,16 +10,10 @@ import {
 } from "lucide-react";
 
 import ProductGrid from "../components/products/ProductGrid";
-import { useProducts } from "../hooks/useProducts";
-import CartDrawer, {
-  type CartItem,
-} from "../components/cart/CartDrawer";
+import { products } from "../data/products";
+import { useShop } from "../context/ShopContext";
 
-import type {
-  Product,
-  ProductFilters,
-  SortOption,
-} from "../types/product";
+type SortOption = "featured" | "price-low" | "price-high" | "rating";
 
 function Home() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -26,169 +21,61 @@ function Home() {
   const [sortOption, setSortOption] =
     useState<SortOption>("featured");
 
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [wishlistIds, setWishlistIds] = useState<number[]>([]);
-
-  const filters: ProductFilters = {
-    search: searchQuery,
-    category: selectedCategory,
-    sortBy: sortOption,
-  };
-
-  const { products, loading, error } = useProducts(filters);
+  const {
+    wishlistIds,
+    addToCart,
+    toggleWishlist,
+  } = useShop();
 
   const categories = useMemo(
-    () => [
-      "All",
-      "Footwear",
-      "Accessories",
-      "Bags",
-      "Electronics",
-    ],
-    []
+    () => ["All", ...new Set(products.map((product) => product.category))],
+    [],
   );
 
-  const cartCount = cart.reduce(
-    (total, item) => total + item.quantity,
-    0
-  );
+  const filteredProducts = useMemo(() => {
+    let result = [...products];
 
-  function addToCart(product: Product) {
-    if (product.stock <= 0) return;
-
-    setCart((currentCart) => {
-      const existingItem = currentCart.find(
-        (item) => item.product.id === product.id
+    if (searchQuery.trim()) {
+      result = result.filter((product) =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()),
       );
+    }
 
-      if (existingItem) {
-        if (existingItem.quantity >= product.stock) {
-          return currentCart;
-        }
+    if (selectedCategory !== "All") {
+      result = result.filter(
+        (product) => product.category === selectedCategory,
+      );
+    }
 
-        return currentCart.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      }
+    switch (sortOption) {
+      case "price-low":
+        result.sort((a, b) => a.price - b.price);
+        break;
 
-      return [...currentCart, { product, quantity: 1 }];
-    });
-  }
+      case "price-high":
+        result.sort((a, b) => b.price - a.price);
+        break;
 
-  function increaseQuantity(productId: number) {
-    setCart((currentCart) =>
-      currentCart.map((item) =>
-        item.product.id === productId &&
-        item.quantity < item.product.stock
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      )
-    );
-  }
+      case "rating":
+        result.sort((a, b) => b.rating - a.rating);
+        break;
 
-  function decreaseQuantity(productId: number) {
-    setCart((currentCart) =>
-      currentCart
-        .map((item) =>
-          item.product.id === productId
-            ? { ...item, quantity: item.quantity - 1 }
-            : item
-        )
-        .filter((item) => item.quantity > 0)
-    );
-  }
+      default:
+        break;
+    }
 
-  function removeFromCart(productId: number) {
-    setCart((currentCart) =>
-      currentCart.filter(
-        (item) => item.product.id !== productId
-      )
-    );
-  }
-
-  function toggleWishlist(product: Product) {
-    setWishlistIds((currentIds) =>
-      currentIds.includes(product.id)
-        ? currentIds.filter((id) => id !== product.id)
-        : [...currentIds, product.id]
-    );
-  }
+    return result;
+  }, [searchQuery, selectedCategory, sortOption]);
 
   return (
-    <div className="min-h-screen bg-white text-slate-900">
+    <div className="bg-white text-slate-900">
+      {/* Announcement Bar */}
       <div className="bg-slate-950 px-4 py-2.5 text-center text-xs font-medium tracking-wide text-white">
         FREE SHIPPING ON ORDERS OVER ₹2,999
       </div>
 
-      <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 lg:px-8">
-          <a
-            href="#home"
-            className="shrink-0 text-2xl font-black tracking-tight"
-          >
-            shop<span className="text-orange-500">sphere.</span>
-          </a>
-
-          <nav className="hidden items-center gap-6 text-sm font-medium md:flex">
-            <a href="#home" className="hover:text-orange-500">
-              Home
-            </a>
-            <a href="#products" className="hover:text-orange-500">
-              Shop
-            </a>
-            <a href="#benefits" className="hover:text-orange-500">
-              About
-            </a>
-          </nav>
-
-          <div className="flex items-center gap-3">
-            <a
-              href="#products"
-              aria-label="Find products"
-              className="rounded-full p-2 hover:bg-slate-100"
-            >
-              <Search size={20} />
-            </a>
-
-            <button
-              type="button"
-              aria-label={`Wishlist, ${wishlistIds.length} items`}
-              onClick={() =>
-                document.getElementById("products")?.scrollIntoView({
-                  behavior: "smooth",
-                })
-              }
-              className="relative rounded-full p-2 hover:bg-slate-100"
-            >
-              <Heart size={20} />
-
-              {wishlistIds.length > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] text-white">
-                  {wishlistIds.length}
-                </span>
-              )}
-            </button>
-
-            <button
-              type="button"
-              aria-label={`${cartCount} items in shopping bag`}
-              onClick={() => setIsCartOpen(true)}
-              className="relative rounded-full p-2 hover:bg-slate-100"
-            >
-              <ShoppingBag size={20} />
-
-              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] text-white">
-                {cartCount}
-              </span>
-            </button>
-          </div>
-        </div>
-      </header>
-
       <main>
+        {/* Hero Section */}
         <section
           id="home"
           className="mx-auto grid max-w-7xl items-center gap-10 px-5 py-12 sm:py-16 lg:grid-cols-2 lg:px-8 lg:py-20"
@@ -212,13 +99,13 @@ function Home() {
               and everyday products made to fit your lifestyle.
             </p>
 
-            <a
-              href="#products"
+            <Link
+              to="/shop"
               className="mt-8 inline-flex items-center gap-2 rounded-full bg-slate-950 px-7 py-4 text-sm font-semibold text-white transition hover:bg-orange-500"
             >
               Explore collection
               <ArrowRight size={18} />
-            </a>
+            </Link>
 
             <div className="mt-8 flex flex-wrap gap-5 text-sm text-slate-500">
               <span>✓ Quality essentials</span>
@@ -238,6 +125,7 @@ function Home() {
               <p className="text-xs text-slate-500">
                 Curated for you
               </p>
+
               <p className="mt-1 text-lg font-bold">
                 The new essentials
               </p>
@@ -245,6 +133,7 @@ function Home() {
           </div>
         </section>
 
+        {/* Products Section */}
         <section
           id="products"
           className="scroll-mt-24 bg-slate-50 px-5 py-16 sm:py-20 lg:px-8"
@@ -261,9 +150,7 @@ function Home() {
                 </h2>
 
                 <p className="mt-3 text-slate-500">
-                  {loading
-                    ? "Loading products..."
-                    : `${products.length} products to explore`}
+                  {filteredProducts.length} products to explore
                 </p>
               </div>
 
@@ -285,6 +172,7 @@ function Home() {
               </label>
             </div>
 
+            {/* Search */}
             <label className="mt-8 flex max-w-xl items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 focus-within:border-orange-500">
               <Search size={20} className="shrink-0 text-slate-400" />
 
@@ -298,6 +186,7 @@ function Home() {
               />
             </label>
 
+            {/* Categories */}
             <div className="mt-5 flex flex-wrap gap-2">
               {categories.map((category) => (
                 <button
@@ -316,27 +205,29 @@ function Home() {
               ))}
             </div>
 
+            {/* Product Grid */}
             <div className="mt-8">
-              {loading ? (
-                <div className="py-20 text-center text-slate-500">
-                  Loading products...
-                </div>
-              ) : error ? (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-red-600">
-                  {error}
-                </div>
-              ) : (
-                <ProductGrid
-                  products={products}
-                  wishlistIds={wishlistIds}
-                  onAddToCart={addToCart}
-                  onToggleWishlist={toggleWishlist}
-                />
-              )}
+              <ProductGrid
+                products={filteredProducts}
+                wishlistIds={wishlistIds}
+                onAddToCart={addToCart}
+                onToggleWishlist={toggleWishlist}
+              />
+            </div>
+
+            <div className="mt-12 text-center">
+              <Link
+                to="/shop"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-7 py-3 font-semibold transition hover:border-orange-500 hover:text-orange-500"
+              >
+                View all products
+                <ArrowRight size={18} />
+              </Link>
             </div>
           </div>
         </section>
 
+        {/* Benefits Section */}
         <section
           id="benefits"
           className="px-5 py-16 lg:px-8"
@@ -344,7 +235,11 @@ function Home() {
           <div className="mx-auto grid max-w-7xl gap-10 sm:grid-cols-3">
             <div>
               <Truck className="text-orange-500" size={30} />
-              <h3 className="mt-4 font-bold">Delivery made easy</h3>
+
+              <h3 className="mt-4 font-bold">
+                Delivery made easy
+              </h3>
+
               <p className="mt-2 text-sm leading-6 text-slate-500">
                 A straightforward experience from browsing to delivery.
               </p>
@@ -352,7 +247,11 @@ function Home() {
 
             <div>
               <Heart className="text-orange-500" size={30} />
-              <h3 className="mt-4 font-bold">Thoughtful selection</h3>
+
+              <h3 className="mt-4 font-bold">
+                Thoughtful selection
+              </h3>
+
               <p className="mt-2 text-sm leading-6 text-slate-500">
                 Discover a curated collection of everyday essentials.
               </p>
@@ -360,7 +259,11 @@ function Home() {
 
             <div>
               <ShoppingBag className="text-orange-500" size={30} />
-              <h3 className="mt-4 font-bold">Easy shopping</h3>
+
+              <h3 className="mt-4 font-bold">
+                Easy shopping
+              </h3>
+
               <p className="mt-2 text-sm leading-6 text-slate-500">
                 A responsive storefront for desktop, tablet, and mobile.
               </p>
@@ -368,19 +271,6 @@ function Home() {
           </div>
         </section>
       </main>
-
-      <footer className="bg-slate-950 px-5 py-8 text-center text-sm text-slate-400">
-        © {new Date().getFullYear()} ShopSphere. Built with React and TypeScript.
-      </footer>
-
-      <CartDrawer
-        isOpen={isCartOpen}
-        items={cart}
-        onClose={() => setIsCartOpen(false)}
-        onIncrease={increaseQuantity}
-        onDecrease={decreaseQuantity}
-        onRemove={removeFromCart}
-      />
     </div>
   );
 }
