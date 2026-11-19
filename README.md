@@ -57,18 +57,31 @@ ESLint| Code quality and linting
 Project Structure
 
 shopsphere/
+
 ├── public/
+
 ├── src/
+
 │   ├── assets/
+
 │   ├── components/
+
 │   ├── features/
+
 │   ├── hooks/
+
 │   ├── pages/
+
 │   ├── services/
-│   ├── types/
-│   ├── utils/
+
+│   ├── types
+
+│   ├── utils
+
 │   ├── App.tsx
+
 │   └── main.tsx
+
 ├── index.html
 ├── package.json
 ├── tsconfig.json
