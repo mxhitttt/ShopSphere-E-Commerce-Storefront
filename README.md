@@ -1,4 +1,4 @@
-loShopSphere – Modern E-Commerce Storefront
+ûloShopSphere – Modern E-Commerce Storefront
 
 ShopSphere is a modern, responsive e-commerce frontend built using React, TypeScript, and Vite. It provides a smooth and user-friendly shopping experience with product discovery, smart filtering, cart management, wishlist functionality, and a streamlined checkout process.
 
@@ -18,7 +18,7 @@ Problem
 - Complicated checkout processes.
 - Inconsistent user interfaces.
 
-Solution
+Solu
 
 ShopSphere addresses these challenges through:
 
